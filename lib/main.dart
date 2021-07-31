@@ -1,169 +1,81 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'package:flutter/rendering.dart';
 
-import 'package:flutter/services.dart';
-import 'package:snapkit/snapkit.dart';
-
-void main() {
-  runApp(MyApp());
-}
+void main() => runApp(MyApp());
 
 class MyApp extends StatefulWidget {
   @override
   _MyAppState createState() => _MyAppState();
 }
 
-class _MyAppState
-    extends State<MyApp> /* implements SnapchatAuthStateListener */ {
-  GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
-
-  String _platformVersion = 'Unknown';
-  SnapchatUser? _snapchatUser;
-  Snapkit _snapkit = Snapkit();
-
-  late StreamSubscription<SnapchatUser?> subscription;
-
-  bool _isSnackOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    initPlatformState();
-
-    // _snapkit.addAuthStateListener(this);
-
-    subscription = _snapkit.onAuthStateChanged.listen((SnapchatUser? user) {
-      setState(() {
-        _snapchatUser = user;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    subscription.cancel();
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    try {
-      platformVersion = await Snapkit.platformVersion;
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
-  }
-
-  Future<void> loginUser() async {
-    try {
-      bool installed = await _snapkit.isSnapchatInstalled;
-      if (installed)
-        await _snapkit.login();
-      else if (!_isSnackOpen) {
-        _isSnackOpen = true;
-        _scaffoldMessengerKey.currentState!
-            .showSnackBar(
-                SnackBar(content: Text("Snapchat App not Installed.")))
-            .closed
-            .then((_) {
-          _isSnackOpen = false;
-        });
-      }
-    } on PlatformException catch (exception) {
-      print(exception);
-    }
-  }
-
-  Future<void> logoutUser() async {
-    try {
-      await _snapkit.logout();
-    } on PlatformException catch (exception) {
-      print(exception);
-    }
-
-    setState(() {
-      _snapchatUser = null;
-    });
-  }
-
+class _MyAppState extends State<MyApp> {
+  var list = List.generate(
+    10,
+    (index) => DataModel(
+      id: index,
+      name: 'name',
+      extra: 'extra',
+    ),
+  );
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        home: ScaffoldMessenger(
-      key: _scaffoldMessengerKey,
-      child: Scaffold(
+      title: 'Welcome to Flutter',
+      home: Scaffold(
         appBar: AppBar(
-          title: const Text('Snapkit Example App'),
+          title: const Text('Welcome to Flutter'),
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_snapchatUser != null)
-                Container(
-                    width: 50,
-                    height: 50,
-                    margin: EdgeInsets.all(15),
-                    child: CircleAvatar(
-                      backgroundColor: Colors.lightBlue,
-                      foregroundImage: NetworkImage(_snapchatUser!.bitmojiUrl),
-                    )),
-              if (_snapchatUser != null) Text(_snapchatUser!.displayName),
-              if (_snapchatUser != null)
-                Text(_snapchatUser!.externalId,
-                    style: TextStyle(color: Colors.grey, fontSize: 9.0)),
-              Text('Running on: $_platformVersion\n'),
-              if (_snapchatUser == null)
-                Container(
-                  padding: EdgeInsets.only(left: 8.0, right: 8.0),
-                  child: SnapchatButton(
-                    snapkit: _snapkit,
-                  ),
+        body: ListView.builder(
+          itemCount: list.length,
+          itemBuilder: (BuildContext context, int index) {
+            var data = list[index];
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  changeName(data);
+                });
+              },
+              onDoubleTap: () {
+                setState(() {
+                  changeNameBack(data);
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
+                width: 200,
+                height: 200,
+                color: Colors.green,
+                child: FittedBox(
+                  child: Text(
+                      'id:${data.id} name: ${data.name}   extra:${data.extra} '),
                 ),
-              if (_snapchatUser != null)
-                TextButton(onPressed: () => logoutUser(), child: Text("Logout"))
-            ],
-          ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            _snapkit.share(SnapchatMediaType.PHOTO,
-                image: NetworkImage(
-                    "https://picsum.photos/${(this.context.size!.width.round())}/${this.context.size!.height.round()}.jpg"),
-                sticker: SnapchatSticker(
-                    image: Image.asset('images/icon-256x256.png').image),
-                caption: "Snapkit Example Caption!",
-                attachmentUrl: "https://JacobBrasil.com/");
+              ),
+            );
           },
-          child: Icon(Icons.camera),
         ),
       ),
-    ));
+    );
   }
+}
 
-  // @override
-  // void onLogin(SnapchatUser user) {
-  //   setState(() {
-  //     _snapchatUser = user;
-  //   });
-  // }
+void changeName(DataModel data) {
+  data.name = 'newName';
+}
 
-  // @override
-  // void onLogout() {
-  //   setState(() {
-  //     _snapchatUser = null;
-  //   });
-  // }
+void changeNameBack(DataModel data) {
+  data.name = 'Name';
+}
+
+class DataModel {
+  int? id;
+  String? name;
+  String? extra;
+  DataModel({
+    this.id,
+    this.name,
+    this.extra,
+  });
 }
